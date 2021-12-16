@@ -6,6 +6,7 @@ import Numeric
 import Debug.Trace
 import Data.Maybe
 import Control.Monad
+import Text.Printf
 
 main = do
     fileContent <- readFile "./016/in.txt"
@@ -20,22 +21,11 @@ data Content = Literal Int
 type Packet = (Int, Int, Content)
 
 bin = concatMap tobin
-    where tobin '0' = "0000"
-          tobin '1' = "0001"
-          tobin '2' = "0010"
-          tobin '3' = "0011"
-          tobin '4' = "0100"
-          tobin '5' = "0101"
-          tobin '6' = "0110"
-          tobin '7' = "0111"
-          tobin '8' = "1000"
-          tobin '9' = "1001"
-          tobin 'A' = "1010"
-          tobin 'B' = "1011"
-          tobin 'C' = "1100"
-          tobin 'D' = "1101"
-          tobin 'E' = "1110"
-          tobin 'F' = "1111"
+      where tobin = p . fst . head . readHex . singleton
+            p n = printf "%04b" (n :: Int)
+
+
+readbin = fmap fst . listToMaybe . readInt 2 (const True) digitToInt
 
 -- 2 kool 4 traversable
 one = sumVersion . parse
@@ -49,13 +39,11 @@ eval (_, 0, Operation subs) = sum $ evalm subs
 eval (_, 1, Operation subs) = product $ evalm subs
 eval (_, 2, Operation subs) = minimum $ evalm subs
 eval (_, 3, Operation subs) = maximum $ evalm subs
-eval (_, 5, Operation subs) = trans $ eval (subs !! 0) > eval (subs !! 1)
-eval (_, 6, Operation subs) = trans $ eval (subs !! 0) < eval (subs !! 1)
-eval (_, 7, Operation subs) = trans $ eval (subs !! 0) == eval (subs !! 1)
+eval (_, 5, Operation subs) = fromEnum $ eval (subs !! 0) > eval (subs !! 1)
+eval (_, 6, Operation subs) = fromEnum $ eval (subs !! 0) < eval (subs !! 1)
+eval (_, 7, Operation subs) = fromEnum $ eval (subs !! 0) == eval (subs !! 1)
 
 evalm = fmap eval
-trans True = 1
-trans _    = 0
 
 parse = fst . fromJust . run packet
 
@@ -97,8 +85,6 @@ cont c = Parser $ \rest -> do
       (n, rest) <- run (r 4) rest
       if l == c then Just (n, rest)
                 else Nothing
-           
-readbin = fmap fst . listToMaybe . readInt 2 (`elem` "01") digitToInt
 
 newtype Parser a = Parser { run :: String -> Maybe (a, String) }
 
