@@ -1,0 +1,71 @@
+import Control.Arrow
+import Data.List hiding (intersect)
+import Data.Maybe
+import Data.List.Split
+
+data S    = On | Off
+neg On  = Off
+neg Off = On
+
+type Cube = (S, (P3, P3))
+type P3   = (Int, Int, Int)
+
+main = do
+    fileContent <- readFile "./022/test.txt"
+    let input = cube <$> parse fileContent
+    print $ one input
+    print $ two input
+
+parse = fmap (parseL . words) . lines
+      where parseL ["on",  rest] = (On,  parseS rest)
+            parseL ["off", rest] = (Off, parseS rest)
+            parseS i = let [xr, yr, zr] = splitOn "," i
+                        in (parseR xr, parseR yr, parseR zr)
+            parseR i = let [bt, tp] = splitOn ".." i
+                        in (read $ drop 2 bt, read tp)
+
+cube (s, ((xmin, xmax), (ymin, ymax), (zmin, zmax))) =
+      (s, ((xmin, ymin, zmin), (xmax, ymax, zmax)))
+
+one = solve . filter (not . disjoint def . snd)
+       where def = ((-50, -50, -50), (50, 50, 50))
+
+two = solve
+
+solve :: [Cube] -> Int
+solve = areaVolume . addCubes
+
+areaVolume = sum . fmap volume
+       where volume   = uncurry (*) . (sign *** volume')
+             volume'  = uncurry3 ((*) .: (*))
+                      . uncurry (trimap $ flip (-) . (+ 1))
+             sign On  = 1
+             sign Off = -1
+
+addCubes :: [Cube] -> [Cube]
+addCubes = foldl' merge []
+       where merge cubes current = (++ cubes)
+                                 . mergeStrategy (fst current)
+                                 . mapMaybe (intersect current)
+                                 $ cubes
+              where mergeStrategy On  = (current :)
+                    mergeStrategy Off = id
+
+disjoint (_, a) (_, b) = any
+                       $ trimap (<) a b
+       where any (True, _, _) = True
+             any (_, True, _) = True
+             any (_, _, True) = True
+             any _            = False
+
+intersect (_, c1) (on, c2) | disjoint c1 c2    = Nothing
+intersect (_, (min1, max1)) (on, (min2, max2)) = Just
+       (neg on, (trimap max min1 min2, trimap min max1 max2))
+
+-- Don't look :)
+(.:) = (.) . (.)
+infixr 0 .:
+
+uncurry3 f (a, b, c) = f a b c
+
+trimap f (x, y, z) (x', y', z')  = (f x x', f y y', f z z')
