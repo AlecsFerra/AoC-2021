@@ -1,6 +1,7 @@
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE PatternSynonyms #-}
 {-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE BangPatterns #-}
 
 import qualified Data.HashMap.Strict as M
 import qualified Data.HashSet as S
@@ -62,16 +63,16 @@ validDestination world fish start to | room start =  hallway to
 roomOf = (+ 3) . (* 2) . subtract (ord 'A') . ord
 
 paths world = dfs S.empty . adj
-  where dfs _ []                            = []
-        dfs seen (x:xs) | x `S.member` seen = dfs seen xs
-                        | not $ valid x     = dfs seen xs
-                        | otherwise         = x : dfs (x `S.insert` seen)
+  where dfs _ []                             = []
+        dfs !seen (x:xs) | x `S.member` seen = dfs seen xs
+                         | not $ valid x     = dfs seen xs
+                         | otherwise         = x : dfs (x `S.insert` seen)
                                                       (adj x ++ xs)
-        valid                               = (== Just '.') . (world M.!?)
-        adj (x, y)                          = [ (x, y + 1)
-                                              , (x - 1, y)
-                                              , (x + 1, y)
-                                              , (x, y - 1) ]
+        valid                                = (== Just '.') . (world M.!?)
+        adj (x, y)                           = [ (x, y + 1)
+                                               , (x - 1, y)
+                                               , (x + 1, y)
+                                               , (x, y - 1) ]
 
 complete world = and $ fmap completeLine "ABCD"
   where completeLine fish = all (== fish)
@@ -80,7 +81,7 @@ complete world = and $ fmap completeLine "ABCD"
 
 solve world = dijkstra S.empty (singleton 0 world)
   where dijkstra _ Empty      = error "TF BRUH"
-        dijkstra seen queue
+        dijkstra !seen queue
           | x `S.member` seen = dijkstra seen rest
           | complete x        = cost
           | otherwise         = dijkstra (x `S.insert` seen) rest'
